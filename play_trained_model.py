@@ -1,17 +1,33 @@
 # play_trained_model.py
 import pygame
 import torch
+from typing import Any, Tuple
+
 from game_core import Snake, Apple, Agent
-from ml_model import SnakeNet # Required to instantiate model before loading state_dict
+from ml_model import SnakeNet  # Required to instantiate model before loading state_dict
 from game_constants import (
-    SCREEN_BASE_WIDTH, SCREEN_BASE_HEIGHT, MOVE_INTERVAL_PLAY, LINE_WIDTH,
-    OUTER_RECT_X, OUTER_RECT_Y, OUTER_RECT_WIDTH, OUTER_RECT_HEIGHT,
-    CELL_WIDTH, CELL_HEIGHT, COLS, ROWS, WHITE, BLACK, SNAKE_COLOR, APPLE_COLOR
+    SCREEN_BASE_WIDTH,
+    SCREEN_BASE_HEIGHT,
+    MOVE_INTERVAL_PLAY,
+    LINE_WIDTH,
+    OUTER_RECT_X,
+    OUTER_RECT_Y,
+    OUTER_RECT_WIDTH,
+    OUTER_RECT_HEIGHT,
+    CELL_WIDTH,
+    CELL_HEIGHT,
+    COLS,
+    ROWS,
+    WHITE,
+    BLACK,
+    SNAKE_COLOR,
+    APPLE_COLOR,
 )
 
 MODEL_PATH = "best_snake_model.pt"
 
-def initialize_game_elements_for_play():
+def initialize_game_elements_for_play() -> Tuple[Snake, Apple, Agent, bool]:
+    """Load the trained model and create game objects."""
     game_snake = Snake()
     game_apple = Apple()
     game_apple.respawn(game_snake.body)
@@ -31,7 +47,8 @@ def initialize_game_elements_for_play():
     
     return game_snake, game_apple, ai_agent, False
 
-def draw_game_grid(screen, pygame_instance):
+def draw_game_grid(screen: Any, pygame_instance: Any) -> None:
+    """Draw the outer rectangle and grid lines."""
     pygame_instance.draw.rect(screen, WHITE, (OUTER_RECT_X, OUTER_RECT_Y, OUTER_RECT_WIDTH, OUTER_RECT_HEIGHT), LINE_WIDTH)
     for col_idx in range(1, COLS):
         x_pos = OUTER_RECT_X + col_idx * CELL_WIDTH
@@ -40,16 +57,26 @@ def draw_game_grid(screen, pygame_instance):
         y_pos = OUTER_RECT_Y + row_idx * CELL_HEIGHT
         pygame_instance.draw.line(screen, BLACK, (OUTER_RECT_X + 1, y_pos), (OUTER_RECT_X + OUTER_RECT_WIDTH - 2, y_pos))
 
-def display_score(screen, pygame_instance, score, font):
+def display_score(screen: Any, pygame_instance: Any, score: int, font: Any) -> None:
+    """Render the current score in the top left corner."""
     score_text = font.render(f"Score: {score}", True, WHITE)
     screen.blit(score_text, (OUTER_RECT_X, OUTER_RECT_Y - 40))
 
-def display_centered_message(screen, pygame_instance, text, font, y_offset=0, color=WHITE):
+def display_centered_message(
+    screen: Any,
+    pygame_instance: Any,
+    text: str,
+    font: Any,
+    y_offset: int = 0,
+    color: Tuple[int, int, int] = WHITE,
+) -> None:
+    """Show a message centered on the screen."""
     message_surface = font.render(text, True, color)
     message_rect = message_surface.get_rect(center=(SCREEN_BASE_WIDTH // 2, SCREEN_BASE_HEIGHT // 2 + y_offset))
     screen.blit(message_surface, message_rect)
 
-def main_play_loop():
+def main_play_loop() -> None:
+    """Run a Pygame loop letting the AI play the game."""
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_BASE_WIDTH, SCREEN_BASE_HEIGHT))
     pygame.display.set_caption("Snake Game - AI Playing")

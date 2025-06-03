@@ -1,13 +1,23 @@
 # train.py
 import random
+from typing import List, Optional, Tuple
+
 import torch
-from game_core import Snake, Apple, Agent # SnakeNet is implicitly part of Agent
+
+from game_core import Snake, Apple, Agent  # SnakeNet is implicitly part of Agent
 from game_constants import COLS, ROWS
 
 class Trainer:
-    def __init__(self, population_size=50, mutation_rate=0.05,
-                 mutation_strength=0.1, mutation_decay=0.97,
-                 min_mutation_strength=0.02):
+    """Genetic algorithm trainer for evolving snake agents."""
+
+    def __init__(
+        self,
+        population_size: int = 50,
+        mutation_rate: float = 0.05,
+        mutation_strength: float = 0.1,
+        mutation_decay: float = 0.97,
+        min_mutation_strength: float = 0.02,
+    ) -> None:
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.mutation_strength = mutation_strength
@@ -15,14 +25,16 @@ class Trainer:
         self.mutation_decay = mutation_decay
         self.min_mutation_strength = min_mutation_strength
 
-    def evaluate_population(self):
-        fitness_scores = []
-        for i, agent in enumerate(self.population):
+    def evaluate_population(self) -> List[Tuple[float, Agent]]:
+        """Return fitness scores for the entire population."""
+        fitness_scores: List[Tuple[float, Agent]] = []
+        for agent in self.population:
             fitness = self.run_simulation(agent)
             fitness_scores.append((fitness, agent))
         return fitness_scores
 
-    def run_simulation(self, agent):
+    def run_simulation(self, agent: Agent) -> float:
+        """Simulate one game and return the fitness for ``agent``."""
         sim_snake = Snake()
         sim_apple = Apple()
         sim_apple.respawn(sim_snake.body)
@@ -68,7 +80,8 @@ class Trainer:
         fitness = total_steps_survived + (game_score * 100)
         return fitness
 
-    def evolve_population(self):
+    def evolve_population(self) -> Tuple[float, Optional[Agent]]:
+        """Evolve the agent population by one generation."""
         scored_population = self.evaluate_population()
         scored_population.sort(reverse=True, key=lambda x: x[0])
 
@@ -93,10 +106,11 @@ class Trainer:
             new_population.append(child)
 
         self.population = new_population
-        best_fitness_this_gen = scored_population[0][0] if scored_population else -float('inf')
+        best_fitness_this_gen = scored_population[0][0] if scored_population else -float("inf")
         return best_fitness_this_gen, scored_population[0][1] if scored_population else None
 
-    def mutate_weights(self, weights_tensor):
+    def mutate_weights(self, weights_tensor: torch.Tensor) -> torch.Tensor:
+        """Return a mutated copy of ``weights_tensor``."""
         mutated_weights = weights_tensor.clone()
         for i in range(len(mutated_weights)):
             if random.random() < self.mutation_rate:

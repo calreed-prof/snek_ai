@@ -1,24 +1,30 @@
 # game_core.py
 import random
+from typing import Any, List, Optional, Tuple
+
 import torch
+
 from ml_model import SnakeNet
 from game_constants import (
     ROWS, COLS, CELL_WIDTH, CELL_HEIGHT, LINE_WIDTH,
     INNER_CELL_WIDTH, INNER_CELL_HEIGHT, OUTER_RECT_X, OUTER_RECT_Y,
-    SNAKE_COLOR, APPLE_COLOR
+    SNAKE_COLOR, APPLE_COLOR,
 )
 
 class Snake:
-    def __init__(self):
-        self.x = COLS // 2
-        self.y = ROWS // 2
-        self.body = [(self.x, self.y)]
-        self.direction = "RIGHT"  # Initial direction
-        self.next_direction = self.direction
-        self.grow = False
-        self.steps = 0
+    """Simple snake with position, body and movement logic."""
 
-    def move(self):
+    def __init__(self) -> None:
+        self.x: int = COLS // 2
+        self.y: int = ROWS // 2
+        self.body: List[Tuple[int, int]] = [(self.x, self.y)]
+        self.direction: str = "RIGHT"  # Initial direction
+        self.next_direction: str = self.direction
+        self.grow: bool = False
+        self.steps: int = 0
+
+    def move(self) -> None:
+        """Advance the snake one step in its next_direction."""
         self.direction = self.next_direction
         self.steps += 1
 
@@ -35,16 +41,16 @@ class Snake:
         else:
             self.grow = False
 
-    def check_collision(self):
-        # Wall collision
+    def check_collision(self) -> bool:
+        """Return True if the snake collides with a wall or itself."""
         if not (0 <= self.x < COLS and 0 <= self.y < ROWS):
             return True
-        # Self collision
         if (self.x, self.y) in self.body[1:]:
             return True
         return False
 
-    def draw(self, screen, pygame_instance):
+    def draw(self, screen: Any, pygame_instance: Any) -> None:
+        """Render the snake on the given pygame surface."""
         for segment in self.body:
             pygame_instance.draw.rect(
                 screen, SNAKE_COLOR,
@@ -54,12 +60,15 @@ class Snake:
             )
 
 class Apple:
-    def __init__(self):
-        self.x = random.randint(0, COLS - 1)
-        self.y = random.randint(0, ROWS - 1)
-        self.coords = (self.x, self.y)
+    """Randomly positioned apple eaten by the snake."""
 
-    def respawn(self, snake_body):
+    def __init__(self) -> None:
+        self.x: int = random.randint(0, COLS - 1)
+        self.y: int = random.randint(0, ROWS - 1)
+        self.coords: Tuple[int, int] = (self.x, self.y)
+
+    def respawn(self, snake_body: List[Tuple[int, int]]) -> None:
+        """Place the apple at a random free location."""
         while True:
             self.x = random.randint(0, COLS - 1)
             self.y = random.randint(0, ROWS - 1)
@@ -67,7 +76,8 @@ class Apple:
             if self.coords not in snake_body:
                 break
 
-    def draw(self, screen, pygame_instance):
+    def draw(self, screen: Any, pygame_instance: Any) -> None:
+        """Render the apple on the given pygame surface."""
         pygame_instance.draw.rect(
             screen, APPLE_COLOR,
             (OUTER_RECT_X + self.x * CELL_WIDTH + LINE_WIDTH,
@@ -76,21 +86,26 @@ class Apple:
         )
 
 class Agent:
-    def __init__(self, model=None):
-        self.model = model if model is not None else SnakeNet()
+    """Wrapper around ``SnakeNet`` that provides game specific helpers."""
+
+    def __init__(self, model: Optional[SnakeNet] = None) -> None:
+        self.model: SnakeNet = model if model is not None else SnakeNet()
         self.model.eval()
 
-    def get_weights(self):
+    def get_weights(self) -> torch.Tensor:
+        """Return the model parameters as a 1-D tensor."""
         return torch.cat([param.data.view(-1) for param in self.model.parameters()])
 
-    def set_weights(self, flat_weights):
+    def set_weights(self, flat_weights: torch.Tensor) -> None:
+        """Load flattened weights into the model."""
         pointer = 0
         for param in self.model.parameters():
             num_params = param.numel()
             param.data.copy_(flat_weights[pointer:pointer + num_params].view_as(param))
             pointer += num_params
 
-    def get_inputs(self, snake, apple, grid_dims): # grid_dims is (COLS, ROWS)
+    def get_inputs(self, snake: Snake, apple: Apple, grid_dims: Tuple[int, int]) -> List[int]:
+        """Return the model input vector describing the game state."""
         head_x, head_y = snake.x, snake.y
         apple_x, apple_y = apple.x, apple.y
         body = snake.body
@@ -143,9 +158,10 @@ class Agent:
         elif snake.direction == "RIGHT": current_dir_encoding[3] = 1
         inputs.extend(current_dir_encoding)
         
-        return inputs # Should be 11 inputs
+        return inputs
 
-    def decide_direction(self, inputs_list):
+    def decide_direction(self, inputs_list: List[int]) -> str:
+        """Choose a movement direction based on network output."""
         x = torch.tensor(inputs_list, dtype=torch.float32)
         with torch.no_grad():
             logits = self.model(x)
@@ -153,8 +169,10 @@ class Agent:
         possible_actions = ["UP", "DOWN", "LEFT", "RIGHT"] # Model output maps to these
         return possible_actions[action_idx]
 
-    def turn_left(self, current_direction):
+    def turn_left(self, current_direction: str) -> str:
+        """Return the direction obtained by turning left from ``current_direction``."""
         return {"UP": "LEFT", "LEFT": "DOWN", "DOWN": "RIGHT", "RIGHT": "UP"}[current_direction]
 
-    def turn_right(self, current_direction):
+    def turn_right(self, current_direction: str) -> str:
+        """Return the direction obtained by turning right from ``current_direction``."""
         return {"UP": "RIGHT", "RIGHT": "DOWN", "DOWN": "LEFT", "LEFT": "UP"}[current_direction]
