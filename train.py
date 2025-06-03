@@ -106,7 +106,12 @@ class Trainer:
             new_population.append(child)
 
         self.population = new_population
-        best_fitness_this_gen = scored_population[0][0] if scored_population else -float("inf")
+        # Decay mutation strength while respecting the minimum threshold
+        self.mutation_strength *= self.mutation_decay
+        if self.mutation_strength < self.min_mutation_strength:
+            self.mutation_strength = self.min_mutation_strength
+
+        best_fitness_this_gen = scored_population[0][0] if scored_population else -float('inf')
         return best_fitness_this_gen, scored_population[0][1] if scored_population else None
 
     def mutate_weights(self, weights_tensor: torch.Tensor) -> torch.Tensor:
@@ -132,7 +137,10 @@ if __name__ == "__main__":
 
     for gen in range(NUM_GENERATIONS):
         best_fitness_gen, best_agent_gen = trainer.evolve_population()
-        print(f"Generation {gen + 1}/{NUM_GENERATIONS} - Best Fitness: {best_fitness_gen:.2f}")
+        print(
+            f"Generation {gen + 1}/{NUM_GENERATIONS} - Best Fitness: {best_fitness_gen:.2f} - "
+            f"Mutation Strength: {trainer.mutation_strength:.4f}"
+        )
         
         if best_agent_gen and best_fitness_gen > highest_fitness_ever:
             highest_fitness_ever = best_fitness_gen
